@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import re
 from copy import deepcopy
 from typing import Any
@@ -84,15 +85,21 @@ def get_tool_results_for_realtime(
     function_responses: list[types.FunctionResponse] = []
     for msg in chat_ctx.items:
         if msg.type == "function_call_output":
+            try:
+                output = ast.literal_eval(msg.output)
+            except:
+                output = {"output": msg.output}
+
             res = types.FunctionResponse(
                 name=msg.name,
-                response={"output": msg.output},
+                response=output,
             )
             if not vertexai:
                 # vertexai does not support id in FunctionResponse
                 # see: https://github.com/googleapis/python-genai/blob/85e00bc/google/genai/_live_converters.py#L1435
                 res.id = msg.call_id
             function_responses.append(res)
+    logger.debug("get_tool_results_for_realtime: function_responses=%s", function_responses)
     return (
         types.LiveClientToolResponse(function_responses=function_responses)
         if function_responses
