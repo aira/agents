@@ -84,15 +84,15 @@ def get_tool_results_for_realtime(
 ) -> types.LiveClientToolResponse | None:
     function_responses: list[types.FunctionResponse] = []
     for msg in chat_ctx.items:
-        if msg.type == "function_call_output":
-            try:
-                output = ast.literal_eval(msg.output)
-            except:
-                output = {"output": msg.output}
-
+        # If there is no output, skip the message.
+        if msg.type == "function_call_output" and msg.output:
             res = types.FunctionResponse(
                 name=msg.name,
-                response=output,
+                # LiveKit sets output to the string representation of the tool's
+                # return value, but the Live API expects the actual value.
+                # https://ai.google.dev/gemini-api/docs/live-tools#function-calling
+                response=ast.literal_eval(msg.output),
+                scheduling=types.FunctionResponseScheduling.SILENT,
             )
             if not vertexai:
                 # vertexai does not support id in FunctionResponse
